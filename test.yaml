@@ -1,0 +1,30 @@
+workflow:
+  name: "Test Volume Workflow"
+  tasks:
+    - name: "start"
+      plugin: "start"
+      outputs: ["TRUE"]
+
+    - name: "df"
+      plugin: "df"
+      inputs: ["TRUE"]
+      outputs: ["MAIN_VOLUME", "FREE_SPACE"]
+
+    - name: "cmd_echo_volume"
+      plugin: "cmd"
+      inputs: ["FREE_SPACE"]
+      outputs: ["ECHOED"]
+      params:
+        command: "echo $FREE_SPACE > volume.tst && echo ECHOED=1"
+
+    - name: "changed"
+      plugin: "changed"
+      inputs: ["FREE_SPACE"]
+      outputs: ["CHANGED"]
+      params:
+        file: "volume.tst"
+        timeout: 10
+
+    - name: "end"
+      plugin: "end"
+      inputs: ["ECHOED", "CHANGED"] 

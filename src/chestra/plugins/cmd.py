@@ -14,18 +14,17 @@ logger.setLevel(logging.INFO)
 
 class CmdPlugin(TaskPlugin):
     """
-    Plugin that executes a shell command. Requires permission.
+    Plugin that executes a shell command. Requires permission if present in env.
     How return values are handled:
     - The command can output environment variable assignments (e.g., VAR=value) to stdout.
     - If the command outputs lines in the form VAR=value, these are parsed and returned as output variables.
     - These returned variables are then injected into Chestra's environment for use by subsequent tasks.
     - If no such lines are output, an empty dict is returned.
     """
-    REQUIRES_AUTH: bool = True
     REQUIRED_PERMISSIONS: list[str] = ["can_execute_commands"]
     def execute(self, env: Dict[str, str], params: Dict[str, Any]) -> Dict[str, str]:
         perms: Dict[str, Any] = env.get("_permissions", {})
-        if self.REQUIRES_AUTH and not perms.get("can_execute_commands", False):
+        if perms and not perms.get("can_execute_commands", False):
             logger.error("Command execution not allowed by permissions")
             raise PermissionError("Command execution not allowed")
         command: str = params.get("command", "")
