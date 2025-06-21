@@ -1,9 +1,14 @@
 import argparse
 import logging
-import sys
-from .orchestrator import TaskOrchestrator
-import yaml
 import re
+import sys
+
+import yaml
+
+from .orchestrator import TaskOrchestrator
+
+# Set default log level to ERROR
+logging.basicConfig(level=logging.ERROR)
 
 
 def generate_plantuml(yaml_file: str, output_file: str = None):
@@ -20,7 +25,7 @@ def generate_plantuml(yaml_file: str, output_file: str = None):
     for task in tasks:
         for outvar in task.get('outputs', []):
             output_to_task[(task['name'], outvar)] = task['name']
-    # Draw edges for each input, with notes for VARS
+    # Draw edges for each input, label links with VARS only (no notes)
     for task in tasks:
         for inp in task.get('inputs', []):
             m = re.match(r'([^.]+)\.(.+)', inp)
@@ -28,14 +33,12 @@ def generate_plantuml(yaml_file: str, output_file: str = None):
                 src, var = m.group(1), m.group(2)
                 dst = task['name']
                 lines.append(f'[{src}] --> [{dst}] : {var}')
-                lines.append(f'note on link #lightyellow: {var}')
             else:
                 # Fallback: try to find the producing task by output name
                 for (prod_task, outvar), src in output_to_task.items():
                     if outvar == inp:
                         dst = task['name']
                         lines.append(f'[{prod_task}] --> [{dst}] : {outvar}')
-                        lines.append(f'note on link #lightyellow: {outvar}')
     lines.append("@enduml")
     plantuml_text = '\n'.join(lines)
     if output_file:
@@ -52,11 +55,33 @@ def main():
     parser.add_argument('--plantuml', nargs='?', const=True, help='Output PlantUML DAG diagram to file or stdout')
     args = parser.parse_args()
 
-    # Set log level
+    # Set log level after parsing args
     if args.verbose:
         logging.getLogger().setLevel(logging.INFO)
+        for logger_name in [
+            "chestra.orchestrator",
+            "chestra.plugins.cmd",
+            "chestra.plugins.df",
+            "chestra.plugins.end",
+            "chestra.plugins.start",
+            "chestra.plugins.changed",
+        ]:
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(logging.INFO)
+            logger.propagate = False
     else:
         logging.getLogger().setLevel(logging.ERROR)
+        for logger_name in [
+            "chestra.orchestrator",
+            "chestra.plugins.cmd",
+            "chestra.plugins.df",
+            "chestra.plugins.end",
+            "chestra.plugins.start",
+            "chestra.plugins.changed",
+        ]:
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(logging.ERROR)
+            logger.propagate = False
 
     if args.plantuml:
         output_file = None if args.plantuml is True else args.plantuml
