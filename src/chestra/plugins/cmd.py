@@ -36,7 +36,13 @@ class CmdPlugin(TaskPlugin):
         logger.info(f"Command stderr: {result.stderr!r}")
         print(result.stdout, end="")  # Print command output to stdout
         output_vars: Dict[str, str] = {}
+        # Parse VAR=value from stdout
         for line in result.stdout.splitlines():
+            if "=" in line:
+                var, value = line.split("=", 1)
+                output_vars[var.strip()] = value.strip()
+        # Also parse VAR=value from stderr (for hidden output variables)
+        for line in result.stderr.splitlines():
             if "=" in line:
                 var, value = line.split("=", 1)
                 output_vars[var.strip()] = value.strip()
