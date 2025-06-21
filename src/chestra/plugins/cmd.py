@@ -1,16 +1,9 @@
-import logging
+from chestra.orchestrator import TaskPlugin
+from chestra.log import get_logger
 import subprocess
 from typing import Any, Dict
 
-from chestra.orchestrator import TaskPlugin
-
-logger = logging.getLogger("chestra.plugins.cmd")
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s')
-handler.setFormatter(formatter)
-if not logger.hasHandlers():
-    logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger = get_logger(__name__)
 
 class CmdPlugin(TaskPlugin):
     """
@@ -34,10 +27,14 @@ class CmdPlugin(TaskPlugin):
         formatted_cmd: str = command
         for var, value in env.items():
             formatted_cmd = formatted_cmd.replace(f"${var}", value)
-        logger.info(f"Executing command: {formatted_cmd}")
+        logger.info(f"About to run: {formatted_cmd}")
         result: subprocess.CompletedProcess[str] = subprocess.run(
             formatted_cmd, shell=True, capture_output=True, text=True
         )
+        logger.info(f"Command returncode: {result.returncode}")
+        logger.info(f"Command stdout: {result.stdout!r}")
+        logger.info(f"Command stderr: {result.stderr!r}")
+        print(result.stdout, end="")  # Print command output to stdout
         output_vars: Dict[str, str] = {}
         for line in result.stdout.splitlines():
             if "=" in line:
