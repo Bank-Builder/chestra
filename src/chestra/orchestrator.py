@@ -1,8 +1,10 @@
 import importlib
 import logging
 import pkgutil
+import threading
 import time
 from abc import ABC, abstractmethod
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Callable, Dict, List, Optional, Type
 
 import requests
@@ -66,6 +68,7 @@ class Task:
     def can_run(self, env: Dict[str, str]) -> bool:
         """
         Check if all input variables are available and task is not completed.
+        Inputs are now namespaced as TASKNAME.VARNAME.
         """
         return all(var in env for var in self.inputs) and not self.completed
 
@@ -137,12 +140,14 @@ class TaskOrchestrator:
     env: Dict[str, str]
     plugin_manager: PluginManager
     auth_service_url: str
+    env_lock: threading.Lock
 
     def __init__(self) -> None:
         self.tasks = []
         self.env = {}
         self.plugin_manager = PluginManager()
         self.auth_service_url = "https://attica.tech/permissions"
+        self.env_lock = threading.Lock()
     def get_permissions(self, auth_token: Optional[str]) -> Dict[str, bool]:
         """
         Fetch permissions from the Attica Auth service.
@@ -173,13 +178,21 @@ class TaskOrchestrator:
         with open(yaml_file, 'r') as f:
             workflow: Dict[str, Any] = yaml.safe_load(f)
         self.plugin_manager.load_builtin_plugins()
+        seen_names = set()
         for task_def in workflow['workflow']['tasks']:
+            name = task_def['name']
+            if name in seen_names:
+                raise ValueError(f"Duplicate task name: {name}")
+            seen_names.add(name)
+            # Inject task_name into params for plugin use
+            params = task_def.get('params', {}).copy()
+            params['task_name'] = name
             task = Task(
-                name=task_def['name'],
+                name=name,
                 plugin_name=task_def['plugin'],
                 inputs=task_def.get('inputs', []),
                 outputs=task_def.get('outputs', []),
-                params=task_def.get('params', {}),
+                params=params,
                 requires_auth=task_def.get('requires_auth', False),
                 permissions=task_def.get('permissions', {}).get('required', [])
                 if 'permissions' in task_def
@@ -189,30 +202,50 @@ class TaskOrchestrator:
             self.tasks.append(task)
     def run(self) -> None:
         """
-        Main execution loop. Runs tasks when their dependencies are met.
+        Main execution loop. Runs eligible tasks in parallel when their dependencies are met.
+        Keeps all running tasks alive and updates environment as soon as any task completes.
         """
-        while True:
-            executed_any: bool = False
-            for task in self.tasks:
-                if task.can_run(self.env):
-                    new_vars: Dict[str, str] = task.execute(
-                        self.env, get_permissions=self.get_permissions
-                    )
-                    self.env.update(new_vars)
-                    executed_any = True
-            if not executed_any:
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures: Dict[Future, Task] = {}
+            running_tasks: set = set()
+            while True:
+                # Start all eligible tasks that haven't started yet
+                for task in self.tasks:
+                    if task.can_run(self.env) and task not in running_tasks:
+                        future = executor.submit(self._run_task_threadsafe, task)
+                        futures[future] = task
+                        running_tasks.add(task)
+                # Check for completed tasks and update env
+                done_futures = [f for f in futures if f.done()]
+                for f in done_futures:
+                    task = futures[f]
+                    result = f.result()
+                    with self.env_lock:
+                        namespaced = {f"{task.name}.{k}": v for k, v in result.items()}
+                        self.env.update(namespaced)
+                    task.completed = True
+                    del futures[f]
+                # If all tasks are completed, break
                 if all(task.completed for task in self.tasks):
                     logger.info("Workflow completed successfully!")
                     break
-                stuck: bool = True
-                for task in self.tasks:
-                    if not task.completed and task.can_run(self.env):
-                        stuck = False
-                        break
-                if stuck:
+                # If no tasks are running or can run, and not all are completed, stuck
+                no_running = not any(
+                    not t.completed for t in self.tasks if t in running_tasks
+                )
+                no_eligible = not any(
+                    t.can_run(self.env) for t in self.tasks if not t.completed
+                )
+                if no_running and no_eligible:
                     logger.error("Workflow stuck - some tasks cannot run")
                     incomplete: List[str] = [t.name for t in self.tasks if not t.completed]
                     logger.error(f"Incomplete tasks: {incomplete}")
                     logger.error(f"Current environment: {self.env}")
                     break
-            time.sleep(0.1)
+                time.sleep(0.1)
+
+    def _run_task_threadsafe(self, task: Task) -> Dict[str, str]:
+        # Copy env for thread safety
+        with self.env_lock:
+            env_copy = self.env.copy()
+        return task.execute(env_copy, get_permissions=self.get_permissions)

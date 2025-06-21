@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from typing import Any, Dict
+
 from chestra.orchestrator import TaskPlugin
 
 logger = logging.getLogger("chestra.plugins.changed")
@@ -13,7 +14,7 @@ if not logger.hasHandlers():
 logger.setLevel(logging.INFO)
 
 class ChangedPlugin(TaskPlugin):
-    """Plugin that emits TRUE if a file is created or its contents/mtime change within timeout."""
+    """Plugin that emits CHANGED=1 if a file is created or its contents/mtime change within timeout."""
     REQUIRES_AUTH: bool = False
     def execute(self, env: Dict[str, str], params: Dict[str, Any]) -> Dict[str, str]:
         file_path: str = params.get("file", "semaphore.txt")
@@ -27,14 +28,14 @@ class ChangedPlugin(TaskPlugin):
             now_exists = os.path.exists(file_path)
             if not exists and now_exists:
                 logger.info(f"File {file_path} was created!")
-                return {"TRUE": "1"}
+                return {"CHANGED": "1"}
             if now_exists:
                 current_mtime = os.path.getmtime(file_path)
                 current_size = os.path.getsize(file_path)
                 if (initial_mtime is not None and current_mtime != initial_mtime) or \
                    (initial_size is not None and current_size != initial_size):
                     logger.info(f"File {file_path} was changed!")
-                    return {"TRUE": "1"}
+                    return {"CHANGED": "1"}
             time.sleep(1)
         logger.warning(f"Timeout reached without file {file_path} being created or changed")
         return {}
