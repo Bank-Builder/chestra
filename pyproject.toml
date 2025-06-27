@@ -7,7 +7,7 @@ name = "chestra"
 version = "0.1.0"
 description = "A modular, plugin-based workflow orchestrator for Pythonistas."
 authors = [
-    { name="Your Name", email="your.email@example.com" }
+    { name="Bank-Builder, email="andrew@turpin.co.za" }
 ]
 readme = "README.md"
 requires-python = ">=3.7"
@@ -18,4 +18,4 @@ dependencies = [
 license = {text = "MIT"}
 
 [project.optional-dependencies]
-dev = ["ruff"] 
+dev = ["ruff", "pytest"] 

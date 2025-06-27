@@ -72,47 +72,47 @@ logger = get_logger(__name__)
 class {plugin_class_name}(TaskPlugin):
     """
     {plugin_name.replace('_', ' ').title()} plugin.
-    
+
     This plugin [describe what this plugin does].
-    
+
     Parameters:
         param1: Description of parameter 1
         param2: Description of parameter 2
-    
+
     Outputs:
         OUTPUT1: Description of output 1
         OUTPUT2: Description of output 2
     """
-    
+
     # Set to True if this plugin requires authentication
     REQUIRES_AUTH: bool = False
-    
+
     # List of required permissions (if REQUIRES_AUTH is True)
     REQUIRED_PERMISSIONS: list[str] = []
-    
+
     def execute(self, env: Dict[str, str], params: Dict[str, Any]) -> Dict[str, str]:
         """
         Execute the plugin logic.
-        
+
         Args:
             env: Current environment variables from previous tasks
             params: Parameters from the workflow YAML
-            
+
         Returns:
             Dictionary of output variables that will be available to subsequent tasks
         """
         logger.info(f"Executing {plugin_name} plugin")
-        
+
         # Check permissions if required
         if self.REQUIRES_AUTH:
             perms = env.get("_permissions", {{}})
             if not all(perms.get(p, False) for p in self.REQUIRED_PERMISSIONS):
                 raise PermissionError(f"Insufficient permissions for {plugin_name}")
-        
+
         # TODO: Implement your plugin logic here
         # Example:
         # result = some_operation(params.get("param1", "default"))
-        
+
         # Return output variables
         return {{
             "OUTPUT1": "value1",
@@ -128,7 +128,7 @@ def test_{plugin_name}_plugin_executes():
     """Test that the {plugin_name} plugin executes successfully."""
     plugin = {plugin_class_name}()
     result = plugin.execute({{}}, {{}})
-    
+
     # TODO: Add proper assertions based on your plugin's expected behavior
     assert "OUTPUT1" in result
     assert "OUTPUT2" in result
@@ -138,20 +138,20 @@ def test_{plugin_name}_plugin_with_params():
     plugin = {plugin_class_name}()
     params = {{"param1": "test_value"}}
     result = plugin.execute({{}}, params)
-    
+
     # TODO: Add assertions for parameter handling
     assert result is not None
 
 def test_{plugin_name}_plugin_with_permissions():
     """Test that the {plugin_name} plugin handles permissions correctly."""
     plugin = {plugin_class_name}()
-    
+
     if plugin.REQUIRES_AUTH:
         # Test with insufficient permissions
         env = {{"_permissions": {{}}}}
         with pytest.raises(PermissionError):
             plugin.execute(env, {{}})
-        
+
         # Test with sufficient permissions
         env = {{"_permissions": {{perm: True for perm in plugin.REQUIRED_PERMISSIONS}}}}
         result = plugin.execute(env, {{}})
@@ -262,16 +262,31 @@ def main():
 
     # Run workflow command
     run_parser = subparsers.add_parser('run', help='Run a workflow')
-    run_parser.add_argument('workflow', help='Path to workflow YAML file (relative to --workflows)')
-    run_parser.add_argument('--plugins', default='/plugins', help='Directory to load user plugins from (default: /plugins)')
-    run_parser.add_argument('--workflows', default='/workflows', help='Directory to load workflow YAMLs from (default: /workflows)')
+    run_parser.add_argument(
+        'workflow',
+        help='Path to workflow YAML file (relative to --workflows)'
+    )
+    run_parser.add_argument(
+        '--plugins',
+        default='/plugins',
+        help='Directory to load user plugins from (default: /plugins)'
+    )
+    run_parser.add_argument(
+        '--workflows',
+        default='/workflows',
+        help='Directory to load workflow YAMLs from (default: /workflows)'
+    )
     run_parser.add_argument('--verbose', action='store_true', help='Enable INFO logging to stdout')
     run_parser.add_argument('--plantuml', nargs='?', const=True, help='Output PlantUML DAG diagram to file or stdout')
 
     # Init plugin command
     init_parser = subparsers.add_parser('init-plugin', help='Initialize a new plugin')
     init_parser.add_argument('plugin_name', help='Name of the plugin to create')
-    init_parser.add_argument('--plugins-dir', default='plugins', help='Directory to create plugin in (default: plugins)')
+    init_parser.add_argument(
+        '--plugins-dir',
+        default='plugins',
+        help='Directory to create plugin in (default: plugins)'
+    )
 
     args = parser.parse_args()
 

@@ -8,13 +8,13 @@ logger = get_logger(__name__)
 class MyCustomPluginPlugin(TaskPlugin):
     """
     My Custom Plugin plugin.
-    
+
     This plugin [describe what this plugin does].
-    
+
     Parameters:
         param1: Description of parameter 1
         param2: Description of parameter 2
-    
+
     Outputs:
         OUTPUT1: Description of output 1
         OUTPUT2: Description of output 2
@@ -29,11 +29,11 @@ class MyCustomPluginPlugin(TaskPlugin):
     def execute(self, env: Dict[str, str], params: Dict[str, Any]) -> Dict[str, str]:
         """
         Execute the plugin logic.
-        
+
         Args:
             env: Current environment variables from previous tasks
             params: Parameters from the workflow YAML
-            
+
         Returns:
             Dictionary of output variables that will be available to subsequent tasks
         """
