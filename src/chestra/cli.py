@@ -122,7 +122,7 @@ class {plugin_class_name}(TaskPlugin):
 
     # Test template
     test_template = f'''import pytest
-from {plugin_name} import {plugin_class_name}
+from chestra.plugins.{plugin_name} import {plugin_class_name}
 
 def test_{plugin_name}_plugin_executes():
     """Test that the {plugin_name} plugin executes successfully."""
@@ -213,13 +213,13 @@ This plugin can access environment variables from previous tasks:
 
 Run the plugin tests:
 ```bash
-python -m pytest {test_filename}
+python -m pytest tests/test_{plugin_name}_plugin.py
 ```
 
 ## Development
 
-1. Edit `{plugin_filename}` to implement your plugin logic
-2. Update `{test_filename}` with proper test cases
+1. Edit `src/chestra/plugins/{plugin_filename}` to implement your plugin logic
+2. Update `tests/test_{plugin_name}_plugin.py` with proper test cases
 3. Update this documentation with actual parameters and outputs
 4. Test your plugin with a workflow
 
@@ -230,6 +230,7 @@ python -m pytest {test_filename}
 - Use `logger.info()` for logging
 - Handle permissions if `REQUIRES_AUTH` is True
 - Follow the naming convention: `{plugin_class_name}`
+- This plugin is part of the `chestra.plugins` namespace
 '''
 
     # Write files
@@ -254,6 +255,8 @@ python -m pytest {test_filename}
     print(f"   2. Update {test_filename} with proper test cases")
     print(f"   3. Update {md_filename} with actual documentation")
     print(f"   4. Test your plugin with: python -m pytest {test_filename}")
+    print(f"   5. Move the plugin to src/chestra/plugins/ for built-in plugins")
+    print(f"   6. Move the test to tests/ for proper test organization")
 
 
 def main():
