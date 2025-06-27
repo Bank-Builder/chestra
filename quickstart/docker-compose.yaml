@@ -5,6 +5,6 @@ services:
       dockerfile: Dockerfile
     image: chestra:latest
     volumes:
-      - ../tests:/workflows
+      - ./workflows:/workflows
       - ./plugins:/plugins
     entrypoint: ["python", "-m", "chestra"]
