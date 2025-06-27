@@ -1,0 +1,10 @@
+services:
+  chestra:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: chestra:latest
+    volumes:
+      - ../tests:/workflows
+      - ./plugins:/plugins
+    entrypoint: ["python", "-m", "chestra"]

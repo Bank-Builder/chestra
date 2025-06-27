@@ -119,7 +119,6 @@ class PluginManager:
         for _, modname, ispkg in pkgutil.iter_modules(package.__path__):
             if not ispkg:
                 module = importlib.import_module(f"chestra.plugins.{modname}")
-                # Convention: plugin class is <CamelCase>Plugin, e.g., StartPlugin
                 class_name = ''.join([part.capitalize() for part in modname.split('_')]) + 'Plugin'
                 plugin_class: Type[TaskPlugin] = getattr(module, class_name, None)
                 if plugin_class:
@@ -127,6 +126,29 @@ class PluginManager:
                     logger.info(f"Loaded plugin: {modname} -> {plugin_class.__name__}")
                 else:
                     logger.warning(f"No plugin class found in module: {modname}")
+    def load_user_plugins(self, plugins_dir: str) -> None:
+        """Load plugins from a user-supplied directory (each .py file is a plugin)."""
+        import importlib.util
+        import os
+        if not os.path.isdir(plugins_dir):
+            logger.info(f"User plugins directory {plugins_dir} does not exist or is not a directory.")
+            return
+        for fname in os.listdir(plugins_dir):
+            if fname.endswith('.py') and not fname.startswith('_'):
+                modname = fname[:-3]
+                fpath = os.path.join(plugins_dir, fname)
+                spec = importlib.util.spec_from_file_location(modname, fpath)
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    # Convention: plugin class is <CamelCase>Plugin
+                    class_name = ''.join([part.capitalize() for part in modname.split('_')]) + 'Plugin'
+                    plugin_class: Type[TaskPlugin] = getattr(module, class_name, None)
+                    if plugin_class:
+                        self.plugins[modname] = plugin_class()
+                        logger.info(f"Loaded plugin: {modname} -> {plugin_class.__name__}")
+                    else:
+                        logger.warning(f"No plugin class found in user module: {modname}")
     def get_plugin(self, name: str) -> TaskPlugin:
         """Retrieve a plugin by name."""
         if name not in self.plugins:
@@ -141,13 +163,17 @@ class TaskOrchestrator:
     plugin_manager: PluginManager
     auth_service_url: str
     env_lock: threading.Lock
+    plugins_dir: str
+    workflows_dir: str
 
-    def __init__(self) -> None:
+    def __init__(self, plugins_dir: str = '/plugins', workflows_dir: str = '/workflows') -> None:
         self.tasks = []
         self.env = {}
         self.plugin_manager = PluginManager()
         self.auth_service_url = "https://attica.tech/permissions"
         self.env_lock = threading.Lock()
+        self.plugins_dir = plugins_dir
+        self.workflows_dir = workflows_dir
     def get_permissions(self, auth_token: Optional[str]) -> Dict[str, bool]:
         """
         Fetch permissions from the Attica Auth service.
@@ -177,7 +203,10 @@ class TaskOrchestrator:
         """
         with open(yaml_file, 'r') as f:
             workflow: Dict[str, Any] = yaml.safe_load(f)
+        # Always load built-in plugins first
         self.plugin_manager.load_builtin_plugins()
+        # Then load user plugins if the directory exists
+        self.plugin_manager.load_user_plugins(self.plugins_dir)
         seen_names = set()
         for task_def in workflow['workflow']['tasks']:
             name = task_def['name']

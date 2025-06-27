@@ -1,0 +1,18 @@
+workflow:
+  name: "Custom Plugin Test Workflow"
+  tasks:
+    - name: "start"
+      plugin: "start"
+      outputs: ["TRUE"]
+
+    - name: "custom_task"
+      plugin: "my_custom_plugin"
+      inputs: ["start.TRUE"]
+      outputs: ["OUTPUT1", "OUTPUT2"]
+      params:
+        param1: "test_value"
+        param2: 42
+
+    - name: "end"
+      plugin: "end"
+      inputs: ["custom_task.OUTPUT1", "custom_task.OUTPUT2"] 
