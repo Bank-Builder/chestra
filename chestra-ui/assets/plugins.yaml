@@ -1,0 +1,69 @@
+plugins:
+  - name: start
+    label: Start
+    color: "#10B981"
+    description: Workflow initialization
+    outputs: [TRUE]
+    params: []
+  - name: end
+    label: End
+    color: "#EF4444"
+    description: Workflow completion
+    outputs: []
+    params: []
+  - name: http
+    label: HTTP
+    color: "#3B82F6"
+    description: Make HTTP requests
+    outputs: [status_code, data, headers, json_data, url]
+    params:
+      - name: url
+        type: string
+        required: true
+      - name: method
+        type: string
+        default: GET
+      - name: headers
+        type: map
+      - name: data
+        type: string
+      - name: json
+        type: map
+      - name: timeout
+        type: int
+        default: 30
+      - name: verify
+        type: bool
+        default: true
+      - name: allow_redirects
+        type: bool
+        default: true
+  - name: cmd
+    label: CMD
+    color: "#F59E0B"
+    description: Execute shell commands
+    outputs: []
+    params:
+      - name: command
+        type: string
+        required: true
+    permissions: [can_execute_commands]
+  - name: df
+    label: DF
+    color: "#8B5CF6"
+    description: Get disk space info
+    outputs: [MAIN_VOLUME, FREE_SPACE]
+    params: []
+    permissions: [can_view_system]
+  - name: changed
+    label: Changed
+    color: "#14B8A6"
+    description: Monitor file changes
+    outputs: [CHANGED]
+    params:
+      - name: file
+        type: string
+        required: true
+      - name: timeout
+        type: int
+        default: 10 
